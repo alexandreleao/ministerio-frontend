@@ -25,8 +25,8 @@ onMounted(loadAssignments);
   <div style="padding: 20px">
 
     <!-- 👇 BOTÃO AQUI -->
-    <button @click="$router.back()" style="margin-bottom: 10px">
-      ⬅ Voltar
+    <button @click="$router.push('/')">
+    ⬅ Voltar para semanas
     </button>
 
     <h1>📋 Designações da Semana</h1>
