@@ -37,6 +37,14 @@
     👨‍🎓 Estudantes
   </button>
 
+  <button @click="$router.push('/create-assignment')" style=" background: none;
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;">
+  ➕ Designação
+</button>
+
 </nav>
     <!-- 📦 CONTEÚDO -->
     <div style="max-width: 800px; margin: auto; padding: 20px">
