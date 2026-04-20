@@ -3,6 +3,7 @@ import WeeksView from "../views/WeeksView.vue";
 import AssignmentsView from "../views/AssignmentsView.vue";
 import StudentsView from "../views/StudentsView.vue";
 import CreateAssignmentView from "../views/CreateAssignmentView.vue";
+import DashboardView from "@/views/DashboardView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,7 +27,13 @@ const router = createRouter({
       path: "/create-assignment",
       name: "create-assignment",
       component: CreateAssignmentView 
+    },
+    {
+      path: "/dashboard",
+      name: "dashboard",
+      component: DashboardView
     }
+
   ]
 });
 

@@ -7,53 +7,73 @@ const weeks = ref([]);
 const loading = ref(false);
 const router = useRouter();
 
-// 🎯 formatar data (padrão BR)
+// 📅 formatar data
 function formatDate(date) {
-  return new Date(date).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  });
+  return new Date(date).toLocaleDateString("pt-BR");
 }
 
 // 📥 carregar semanas
 async function loadWeeks() {
   try {
     const response = await api.get("/weeks");
-    weeks.value = response.data.data;
+    weeks.value = response.data.data || response.data;
   } catch (err) {
-    console.error("Erro ao carregar semanas", err);
+    console.error("Erro ao carregar semanas:", err);
   }
 }
 
-// ⚡ gerar nova semana + designações
+// 🧠 pegar id independente do formato da API
+function extractWeekId(response) {
+  if (response.data?.data?.id) return response.data.data.id;
+  if (response.data?.id) return response.data.id;
+
+  throw new Error("Não foi possível obter o ID da semana");
+}
+
+// ⚡ gerar nova semana
 async function generateWeek() {
   try {
     loading.value = true;
 
-    // cria semana com data atual
-    const weekResponse = await api.post("/weeks", {
-      startDate: new Date()
-    });
+    const weekResponse = await api.post("/weeks");
 
-    const weekId = weekResponse.data.id;
+    console.log("weekResponse:", weekResponse.data);
 
-    // gera designações automáticas
-    await api.post("/generate-week", {
-      weekId
-    });
+    const weekId = extractWeekId(weekResponse);
 
-    // recarrega lista
-    await loadWeeks();
+    await api.post("/generate-week", { weekId });
+
+    router.push(`/week/${weekId}`);
 
   } catch (err) {
-    console.error("Erro ao gerar semana", err);
+    console.error("Erro ao gerar semana:", err);
+    alert(err.response?.data?.error || err.message || "Erro ao gerar semana");
   } finally {
     loading.value = false;
   }
 }
 
-// 🔗 navegar para designações
+// 🔄 regenerar semana
+async function regenerateWeek(weekId) {
+  if (!confirm("Deseja gerar novamente essa semana?")) return;
+
+  try {
+    loading.value = true;
+
+    await api.post("/generate-week", { weekId });
+
+    alert("Semana atualizada!");
+    await loadWeeks();
+
+  } catch (err) {
+    console.error("Erro ao regenerar:", err);
+    alert(err.response?.data?.error || "Erro ao regenerar semana");
+  } finally {
+    loading.value = false;
+  }
+}
+
+// 👉 navegar
 function goToAssignments(id) {
   router.push(`/week/${id}`);
 }
@@ -62,50 +82,44 @@ onMounted(loadWeeks);
 </script>
 
 <template>
-  <div>
+  <div style="padding: 20px">
     <h1>📅 Semanas</h1>
 
     <!-- BOTÃO -->
-    <button 
-      @click="generateWeek" 
-      :disabled="loading"
-      style="
-        margin-bottom: 20px;
-        padding: 10px;
-        cursor: pointer;
-      "
-    >
+    <button @click="generateWeek" :disabled="loading">
       {{ loading ? "Gerando..." : "⚡ Gerar Nova Semana" }}
     </button>
+
+    <hr style="margin: 20px 0" />
 
     <!-- LISTA -->
     <div v-if="weeks.length === 0">
       Nenhuma semana cadastrada.
     </div>
 
-    <div
-      v-for="week in weeks"
-      :key="week.id"
-      style="
-        border: 1px solid #ddd;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      "
-    >
-      <strong>
-        Semana de {{ formatDate(week.startDate) }}
-      </strong>
-
-      <button 
-        @click="goToAssignments(week.id)"
-        style="cursor: pointer;"
+    <ul>
+      <li
+        v-for="week in weeks"
+        :key="week.id"
+        style="margin-bottom: 15px"
       >
-        Ver Designações
-      </button>
-    </div>
+        <strong>
+          Semana de {{ formatDate(week.startDate) }}
+        </strong>
+
+        <br />
+
+        <button @click="goToAssignments(week.id)">
+          📋 Ver Designações
+        </button>
+
+        <button
+          @click="regenerateWeek(week.id)"
+          style="margin-left: 10px"
+        >
+          🔄 Regerar
+        </button>
+      </li>
+    </ul>
   </div>
 </template>
