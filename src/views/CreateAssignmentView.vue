@@ -1,65 +1,75 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
 
+const route = useRoute();
 const router = useRouter();
 
-// 📦 estados
+const week = ref(null);
 const students = ref([]);
-const weeks = ref([]);
-
-const type = ref("Revisita");
-const studentId = ref("");
-const helperId = ref("");
-const weekId = ref("");
 const loading = ref(false);
 
-// 🎯 tipos
-const types = [
-  "Iniciando Conversa",
-  "Revisita",
-  "Estudo Bíblico",
-  "Discurso"
-];
-
-// 🧠 regra: discurso não tem ajudante
-const needsHelper = computed(() => type.value !== "Discurso");
-
-// 📅 formatar data
-function formatDate(date) {
-  if (!date) return "";
-  return new Date(date).toLocaleDateString("pt-BR");
-}
+const form = ref({
+  type: "",
+  title: "",
+  duration: 5,
+  studentId: "",
+  helperId: ""
+});
 
 // 📥 carregar dados
 async function loadData() {
   try {
-    const s = await api.get("/students");
-    students.value = s.data.data;
+    const weekRes = await api.get("/weeks");
+    week.value = weekRes.data.data.find(
+      w => w.id == route.query.weekId
+    );
 
-    const w = await api.get("/weeks");
-    weeks.value = w.data.data;
+    const res = await api.get("/students");
+    students.value = res.data.data;
+
   } catch (err) {
-    console.error("Erro ao carregar dados", err);
+    console.error(err);
   }
 }
 
-// ➕ criar designação
+// 🎯 tipos dinâmicos
+const types = computed(() => {
+  const list = [
+    "Iniciando Conversa",
+    "Revisita",
+    "Estudo Bíblico"
+  ];
+
+  if (week.value?.hasDemonstration) {
+    list.push("Demonstração");
+  }
+
+  list.push("Discurso");
+
+  return list;
+});
+
+// 👨 filtrar alunos para discurso
+const filteredStudents = computed(() => {
+  if (form.value.type === "Discurso") {
+    return students.value.filter(s => s.gender === "M");
+  }
+  return students.value;
+});
+
+// 🔄 se mudar tipo para discurso, remove helper
+watch(() => form.value.type, (newType) => {
+  if (newType === "Discurso") {
+    form.value.helperId = "";
+  }
+});
+
+// 💾 salvar
 async function createAssignment() {
-  // validações frontend
-  if (!studentId.value || !weekId.value) {
-    alert("Selecione aluno e semana");
-    return;
-  }
-
-  if (needsHelper.value && !helperId.value) {
-    alert("Selecione um ajudante");
-    return;
-  }
-
-  if (studentId.value === helperId.value) {
-    alert("Aluno e ajudante não podem ser iguais");
+  if (!form.value.type || !form.value.studentId) {
+    alert("Preencha os campos obrigatórios");
     return;
   }
 
@@ -67,22 +77,14 @@ async function createAssignment() {
     loading.value = true;
 
     await api.post("/assignments", {
-      type: type.value,
-      title: type.value,
-      duration: 5,
-      studentId: Number(studentId.value),
-      helperId: needsHelper.value
-        ? Number(helperId.value)
-        : null,
-      weekId: Number(weekId.value)
+      ...form.value,
+      weekId: Number(route.query.weekId)
     });
 
-    // 🔥 redireciona corretamente
-    router.push(`/week/${weekId.value}`);
+    router.push(`/week/${route.query.weekId}`);
 
   } catch (err) {
-    const msg = err.response?.data?.error || "Erro ao criar designação";
-    alert(msg);
+    alert(err.response?.data?.error || "Erro ao salvar");
   } finally {
     loading.value = false;
   }
@@ -92,60 +94,108 @@ onMounted(loadData);
 </script>
 
 <template>
-  <div style="padding: 20px; max-width: 400px">
+  <div class="container">
     <h1>➕ Nova Designação</h1>
 
-    <!-- TIPO -->
-    <div style="margin-bottom: 15px">
-      <label>Tipo:</label><br />
-      <select v-model="type">
-        <option v-for="t in types" :key="t" :value="t">
+    <div class="form">
+
+      <!-- TIPO -->
+      <label>Tipo</label>
+      <select v-model="form.type">
+        <option disabled value="">Selecione</option>
+        <option v-for="t in types" :key="t">
           {{ t }}
         </option>
       </select>
-    </div>
 
-    <!-- ALUNO -->
-    <div style="margin-bottom: 15px">
-      <label>Aluno:</label><br />
-      <select v-model="studentId">
-        <option value="">Selecione</option>
-        <option v-for="s in students" :key="s.id" :value="s.id">
-          {{ s.name }}
-        </option>
-      </select>
-    </div>
+      <!-- TÍTULO -->
+      <label>Título</label>
+      <input v-model="form.title" placeholder="Título" />
 
-    <!-- AJUDANTE -->
-    <div v-if="needsHelper" style="margin-bottom: 15px">
-      <label>Ajudante:</label><br />
-      <select v-model="helperId">
-        <option value="">Selecione</option>
+      <!-- DURAÇÃO -->
+      <label>Duração</label>
+      <input v-model="form.duration" type="number" />
+
+      <!-- ALUNO -->
+      <label>Aluno</label>
+      <select v-model="form.studentId">
+        <option disabled value="">Selecione</option>
         <option
-          v-for="s in students"
+          v-for="s in filteredStudents"
           :key="s.id"
           :value="s.id"
-          :disabled="s.id === studentId"
         >
           {{ s.name }}
         </option>
       </select>
-    </div>
 
-    <!-- SEMANA -->
-    <div style="margin-bottom: 15px">
-      <label>Semana:</label><br />
-      <select v-model="weekId">
-        <option value="">Selecione</option>
-        <option v-for="w in weeks" :key="w.id" :value="w.id">
-          Semana de {{ formatDate(w.startDate) }}
+      <!-- AJUDANTE -->
+      <label>Ajudante</label>
+      <select
+        v-model="form.helperId"
+        :disabled="form.type === 'Discurso'"
+      >
+        <option value="">Sem ajudante</option>
+        <option
+          v-for="s in students"
+          :key="s.id"
+          :value="s.id"
+        >
+          {{ s.name }}
         </option>
       </select>
-    </div>
 
-    <!-- BOTÃO -->
-    <button @click="createAssignment" :disabled="loading">
-      {{ loading ? "Salvando..." : "Salvar" }}
-    </button>
+      <!-- BOTÃO -->
+      <button
+        class="btn primary"
+        @click="createAssignment"
+        :disabled="loading"
+      >
+        {{ loading ? "Salvando..." : "Salvar" }}
+      </button>
+
+    </div>
   </div>
 </template>
+
+<style scoped>
+.container {
+  padding: 20px;
+  max-width: 400px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+input,
+select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-top: 5px;
+}
+
+.btn {
+  margin-top: 20px;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+</style>
