@@ -8,17 +8,17 @@ const gender = ref("");
 const loading = ref(false);
 const saving = ref(false);
 const search = ref("");
+const errorMsg = ref("");
 
 // 📥 carregar
 async function loadStudents() {
   try {
     loading.value = true;
-
     const res = await api.get("/students");
     students.value = res.data.data;
-
   } catch (err) {
-    console.error("Erro ao carregar estudantes", err);
+    console.error(err);
+    errorMsg.value = "Erro ao carregar estudantes";
   } finally {
     loading.value = false;
   }
@@ -26,8 +26,10 @@ async function loadStudents() {
 
 // ➕ adicionar
 async function addStudent() {
+  errorMsg.value = "";
+
   if (!name.value.trim() || !gender.value) {
-    alert("Preencha nome e sexo");
+    errorMsg.value = "Preencha nome e sexo";
     return;
   }
 
@@ -39,13 +41,15 @@ async function addStudent() {
       gender: gender.value
     });
 
+    // limpar form
     name.value = "";
     gender.value = "";
+
     await loadStudents();
 
   } catch (err) {
     console.error(err);
-    alert("Erro ao cadastrar");
+    errorMsg.value = "Erro ao cadastrar estudante";
   } finally {
     saving.value = false;
   }
@@ -53,12 +57,14 @@ async function addStudent() {
 
 // 🗑️ excluir
 async function deleteStudent(id) {
-  if (!confirm("Excluir este estudante?")) return;
+  const confirmDelete = confirm("Tem certeza que deseja excluir?");
+  if (!confirmDelete) return;
 
   try {
     await api.delete(`/students/${id}`);
     await loadStudents();
   } catch (err) {
+    console.error(err);
     alert("Erro ao excluir");
   }
 }
@@ -76,6 +82,11 @@ onMounted(loadStudents);
 <template>
   <div class="container">
     <h1>👨‍🎓 Estudantes</h1>
+
+    <!-- ALERTA -->
+    <div v-if="errorMsg" class="alert">
+      {{ errorMsg }}
+    </div>
 
     <!-- FORM -->
     <div class="card form">
@@ -96,23 +107,26 @@ onMounted(loadStudents);
         @click="addStudent"
         :disabled="saving"
       >
-        {{ saving ? "Salvando..." : "Adicionar" }}
+        <span v-if="saving">⏳ Salvando...</span>
+        <span v-else>➕ Adicionar</span>
       </button>
     </div>
 
     <!-- BUSCA -->
     <input
       v-model="search"
-      placeholder="Buscar estudante..."
+      placeholder="🔎 Buscar estudante..."
       class="search"
     />
 
     <!-- LOADING -->
-    <div v-if="loading">Carregando...</div>
+    <div v-if="loading" class="loading">
+      Carregando estudantes...
+    </div>
 
     <!-- LISTA -->
     <div v-else>
-      <div v-if="filteredStudents.length === 0">
+      <div v-if="filteredStudents.length === 0" class="empty">
         Nenhum estudante encontrado.
       </div>
 
@@ -124,8 +138,12 @@ onMounted(loadStudents);
         >
           <div class="info">
             <span class="name">{{ s.name }}</span>
-            <span class="badge">
-              {{ s.gender === "M" ? "👨" : "👩" }}
+
+            <span
+              class="badge"
+              :class="s.gender === 'M' ? 'male' : 'female'"
+            >
+              {{ s.gender === "M" ? "👨 Masculino" : "👩 Feminino" }}
             </span>
           </div>
 
@@ -144,15 +162,26 @@ onMounted(loadStudents);
 <style scoped>
 .container {
   padding: 20px;
-  max-width: 500px;
+  max-width: 600px;
+  margin: auto;
+}
+
+/* ALERTA */
+.alert {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
 }
 
 /* CARD */
 .card {
   background: #f9fafb;
   padding: 15px;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 /* FORM */
@@ -167,12 +196,14 @@ select {
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 6px;
+  flex: 1;
 }
 
 /* BUSCA */
 .search {
   width: 100%;
   margin-bottom: 15px;
+  padding: 8px;
 }
 
 /* LISTA */
@@ -185,10 +216,16 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
-  border: 1px solid #eee;
-  border-radius: 6px;
+  padding: 12px;
+  border-radius: 8px;
   margin-bottom: 10px;
+  background: white;
+  border: 1px solid #eee;
+  transition: 0.2s;
+}
+
+.item:hover {
+  transform: scale(1.01);
 }
 
 /* INFO */
@@ -199,11 +236,24 @@ select {
 }
 
 .name {
-  font-weight: 500;
+  font-weight: 600;
 }
 
+/* BADGE */
 .badge {
-  font-size: 18px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.male {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.female {
+  background: #fce7f3;
+  color: #9d174d;
 }
 
 /* BOTÕES */
@@ -230,5 +280,16 @@ select {
 
 .btn:hover {
   opacity: 0.9;
+}
+
+/* ESTADOS */
+.loading {
+  text-align: center;
+  color: #555;
+}
+
+.empty {
+  text-align: center;
+  color: #777;
 }
 </style>
