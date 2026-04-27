@@ -3,7 +3,15 @@ import { ref, onMounted } from "vue";
 import api from "../services/api";
 import PieChart from "../components/PieChart.vue";
 import { computed } from "vue";
+import { logout } from "../services/auth";
+import { useRouter } from "vue-router";
 
+const router = useRouter();
+
+function handleLogout() {
+  logout();
+  router.push("/login");
+}
 const typeChartData = computed(() => {
   if (!stats.value) return null;
 
@@ -46,9 +54,9 @@ onMounted(loadStats);
 </script>
 
 <template>
-  <div class="dashboard">
-    <h1>📊 Dashboard</h1>
-
+  <div class="dashboard">   
+    <h1>📊 Dashboard</h1> 
+      
     <div v-if="!stats">Carregando...</div>
 
     <div v-else>
