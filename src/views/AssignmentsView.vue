@@ -37,7 +37,7 @@ async function clearAssignments() {
   try {
     loading.value = true;
 
-    await api.post("/clear-week", {
+    await api.post("/weeks/clear", {
       weekId: Number(route.params.id)
     });
 
