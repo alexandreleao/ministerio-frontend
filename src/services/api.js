@@ -1,30 +1,19 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000"
+  baseURL: "http://localhost:3000",
 });
 
-// 🔐 envia token automaticamente
+// Adiciona o token em todas as requisições automaticamente
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-
   if (token) {
+    // O prefixo 'Bearer ' é essencial para o middleware funcionar
     config.headers.Authorization = `Bearer ${token}`;
   }
-
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
-
-// 🚨 trata erro global (expiração / inválido)
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-    }
-    return Promise.reject(err);
-  }
-);
 
 export default api;
