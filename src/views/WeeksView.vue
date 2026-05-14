@@ -7,12 +7,10 @@ const weeks = ref([]);
 const loading = ref(false);
 const router = useRouter();
 
-// 📅 Formatar data para o padrão brasileiro
 function formatDate(date) {
   return new Date(date).toLocaleDateString("pt-BR");
 }
 
-// 📥 Carregar a lista de semanas do Banco de Dados
 async function loadWeeks() {
   try {
     const response = await api.get("/weeks");
@@ -22,24 +20,27 @@ async function loadWeeks() {
   }
 }
 
-/**
- * ➕ NAVEGAÇÃO PARA CRIAÇÃO MANUAL
- * Esta função envia o usuário para o formulário que você criou,
- * passando o ID da semana na URL (query string).
- */
 function goToManualCreate(weekId) {
   router.push({
-    path: "/create-assignment", // Verifique se este é o path no seu router/index.js
+    path: "/create-assignment",
     query: { weekId: weekId }
   });
 }
 
-// 📋 Ir para a visualização das designações já existentes
 function goToAssignments(id) {
   router.push(`/week/${id}`);
 }
 
-// Restante das suas funções (generateWeek, deleteFullWeek, etc.) mantidas...
+async function deleteFullWeek(id) {
+  if (!confirm("Tem certeza que deseja excluir esta semana e todas as suas designações?")) return;
+  try {
+    await api.delete(`/weeks/${id}`);
+    await loadWeeks();
+    alert("Semana excluída!");
+  } catch (err) {
+    alert("Erro ao excluir semana.");
+  }
+}
 
 onMounted(loadWeeks);
 </script>
@@ -48,7 +49,6 @@ onMounted(loadWeeks);
   <div class="container">
     <h1>📅 Gerenciar Semanas</h1>
 
-    <!-- Botão para gerar via algoritmo (automático) -->
     <button class="btn primary" @click="generateWeek" :disabled="loading">
       {{ loading ? "Gerando..." : "⚡ Gerar Semana Automática" }}
     </button>
@@ -61,6 +61,10 @@ onMounted(loadWeeks);
       <li v-for="week in weeks" :key="week.id" class="item">
         <div class="week-info">
           <strong>Semana de {{ formatDate(week.startDate) }}</strong>
+          <!-- Pequeno resumo se houver designações -->
+          <p v-if="week.assignments" class="summary">
+            {{ week.assignments.length }} designações nesta semana.
+          </p>
         </div>
 
         <div class="actions">
@@ -69,12 +73,12 @@ onMounted(loadWeeks);
             📋 Ver Detalhes
           </button>
 
-          <!-- ➕ NOVO BOTÃO: CRIAÇÃO MANUAL -->
+          <!-- ➕ CRIAÇÃO MANUAL -->
           <button class="btn manual" @click="goToManualCreate(week.id)">
             ➕ Add Manual
           </button>
 
-          <!-- Outros botões de controle -->
+          <!-- EXCLUIR -->
           <button class="btn danger" @click="deleteFullWeek(week.id)">
             🗑️ Excluir
           </button>
@@ -85,7 +89,7 @@ onMounted(loadWeeks);
 </template>
 
 <style scoped>
-.container { padding: 20px; max-width: 800px; margin: 0 auto; }
+.container { padding: 20px; max-width: 900px; margin: 0 auto; }
 .divider { margin: 20px 0; border: 0; border-top: 1px solid #ddd; }
 .list { list-style: none; padding: 0; }
 .item {
@@ -93,32 +97,33 @@ onMounted(loadWeeks);
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  margin-bottom: 10px;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  background: #fdfdfd;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.actions { display: flex; gap: 8px; }
+.summary { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+.actions { display: flex; gap: 8px; align-items: center; }
 
 .btn {
-  padding: 8px 14px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.primary { background: #3b82f6; color: white; }
-.info { background: #64748b; color: white; }
-
-/* Estilo do novo botão manual */
-.manual { background: #8b5cf6; color: white; } 
-.manual:hover { background: #7c3aed; }
-
+.primary { background: #2563eb; color: white; }
+.info { background: #475569; color: white; }
+.manual { background: #7c3aed; color: white; }
 .danger { background: #ef4444; color: white; }
 
-.btn:hover { opacity: 0.9; }
+.btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
 </style>

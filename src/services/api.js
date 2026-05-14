@@ -15,5 +15,10 @@ api.interceptors.request.use((config) => {
 }, (error) => {
   return Promise.reject(error);
 });
+// Exemplo de função para adicionar ao seu serviço
+export const updateAssignmentStatus = (id, data) => {
+  return api.patch(`/assignments/${id}/status`, data);
+};
+
 
 export default api;
